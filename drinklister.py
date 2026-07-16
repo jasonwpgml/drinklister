@@ -562,7 +562,39 @@ def extract_orders(messages: list[Message]) -> list[Order]:
 
 
 def is_unconfirmed_order(order: Order) -> bool:
-    return order.menu == "확인 필요" or (bool(order.note) and order.note != "참조 주문")
+    if order.menu == "확인 필요":
+        return True
+
+    if order.note == "참조 주문":
+        return False
+
+    if not order.note:
+        return False
+
+    polite_markers = [
+        "감사",
+        "감사합니다",
+        "감사합니당",
+        "감사해요",
+        "부탁드립니다",
+        "부탁드려요",
+        "부탁해요",
+        "부탁합니다",
+        "해주세요",
+        "해주세",
+        "해주시면",
+        "먹겠습니다",
+    ]
+
+    note = order.note.strip()
+    if not note:
+        return False
+
+    lowered = note.lower()
+    if any(marker.lower() in lowered for marker in polite_markers):
+        return False
+
+    return True
 
 
 def make_summary(orders: list[Order]) -> str:
@@ -749,7 +781,9 @@ class OrderExtractorApp:
         )
         summary_label.grid(row=5, column=0, sticky="w", padx=12, pady=(10, 4))
 
-        self.summary_text = tk.Text(self._root, wrap="word", height=10, state="disabled")
+        self.summary_text = tk.Text(
+            self._root, wrap="word", height=10, state="disabled"
+        )
         self.summary_text.grid(row=6, column=0, sticky="nsew", padx=12, pady=(0, 12))
 
     def _insert_example(self) -> None:
