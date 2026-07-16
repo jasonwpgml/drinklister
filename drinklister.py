@@ -15,11 +15,19 @@ import argparse
 import csv
 import json
 import re
-import tkinter as tk
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from tkinter import filedialog, messagebox, simpledialog, ttk
+
+try:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, simpledialog, ttk
+except ImportError:  # pragma: no cover - Streamlit Cloud / headless env
+    tk = None
+    filedialog = None
+    messagebox = None
+    simpledialog = None
+    ttk = None
 
 
 # -----------------------------------------------------------------------------
@@ -621,7 +629,7 @@ def make_summary(orders: list[Order]) -> str:
     return "\n".join(lines)
 
 
-class OrderExtractorApp(tk.Tk):
+class OrderExtractorApp:
     COLUMNS = (
         "user",
         "menu",
@@ -634,31 +642,33 @@ class OrderExtractorApp(tk.Tk):
     )
 
     def __init__(self) -> None:
-        super().__init__()
-        self.title("Discord 음료 주문 추출기")
-        self.geometry("1180x760")
-        self.minsize(900, 600)
+        if tk is None:
+            raise RuntimeError("Tkinter is not available in this environment")
+        self._root = tk.Tk()
+        self._root.title("Discord 음료 주문 추출기")
+        self._root.geometry("1180x760")
+        self._root.minsize(900, 600)
         self.orders: list[Order] = []
         self._build_ui()
         self._insert_example()
 
     def _build_ui(self) -> None:
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=2)
-        self.rowconfigure(4, weight=3)
-        self.rowconfigure(6, weight=2)
+        self._root.columnconfigure(0, weight=1)
+        self._root.rowconfigure(1, weight=2)
+        self._root.rowconfigure(4, weight=3)
+        self._root.rowconfigure(6, weight=2)
 
         title = ttk.Label(
-            self,
+            self._root,
             text="Discord 메시지를 붙여넣고 ‘주문 분석’을 누르세요.",
             font=("TkDefaultFont", 13, "bold"),
         )
         title.grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
-        self.input_text = tk.Text(self, wrap="word", undo=True, height=12)
+        self.input_text = tk.Text(self._root, wrap="word", undo=True, height=12)
         self.input_text.grid(row=1, column=0, sticky="nsew", padx=12)
 
-        button_frame = ttk.Frame(self)
+        button_frame = ttk.Frame(self._root)
         button_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=8)
 
         ttk.Button(button_frame, text="주문 분석", command=self.analyze).pack(
@@ -683,11 +693,11 @@ class OrderExtractorApp(tk.Tk):
         ttk.Label(button_frame, textvariable=self.status_var).pack(side="right")
 
         table_label = ttk.Label(
-            self, text="추출 결과", font=("TkDefaultFont", 11, "bold")
+            self._root, text="추출 결과", font=("TkDefaultFont", 11, "bold")
         )
         table_label.grid(row=3, column=0, sticky="w", padx=12, pady=(3, 4))
 
-        table_frame = ttk.Frame(self)
+        table_frame = ttk.Frame(self._root)
         table_frame.grid(row=4, column=0, sticky="nsew", padx=12)
         table_frame.columnconfigure(0, weight=1)
         table_frame.rowconfigure(0, weight=1)
@@ -735,11 +745,11 @@ class OrderExtractorApp(tk.Tk):
         horizontal_scroll.grid(row=1, column=0, sticky="ew")
 
         summary_label = ttk.Label(
-            self, text="집계 요약", font=("TkDefaultFont", 11, "bold")
+            self._root, text="집계 요약", font=("TkDefaultFont", 11, "bold")
         )
         summary_label.grid(row=5, column=0, sticky="w", padx=12, pady=(10, 4))
 
-        self.summary_text = tk.Text(self, wrap="word", height=10, state="disabled")
+        self.summary_text = tk.Text(self._root, wrap="word", height=10, state="disabled")
         self.summary_text.grid(row=6, column=0, sticky="nsew", padx=12, pady=(0, 12))
 
     def _insert_example(self) -> None:
@@ -813,10 +823,10 @@ class OrderExtractorApp(tk.Tk):
         self.status_var.set("입력란을 비웠습니다.")
 
     def open_menu_config_window(self) -> None:
-        window = tk.Toplevel(self)
+        window = tk.Toplevel(self._root)
         window.title("메뉴/별칭 설정")
         window.geometry("900x560")
-        window.transient(self)
+        window.transient(self._root)
         window.grab_set()
 
         ttk.Label(
@@ -988,8 +998,10 @@ def main() -> None:
             print(f"- {canonical}: {', '.join(aliases)}")
         return
 
+    if tk is None:
+        raise RuntimeError("Tkinter is not available in this environment")
     app = OrderExtractorApp()
-    app.mainloop()
+    app._root.mainloop()
 
 
 if __name__ == "__main__":
